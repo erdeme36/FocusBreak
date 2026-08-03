@@ -1,58 +1,94 @@
 # FocusBreak
 
-FocusBreak, uzun sure ekrana bakan yazilimcilar ve ofis calisanlari icin arastirma destekli bir macOS mola uygulamasidir.
+FocusBreak is a free macOS break reminder for developers and office workers who spend long stretches in front of a screen.
 
-Varsayilan ritim:
+It lives in the menu bar, keeps a simple countdown, and nudges you into short eye breaks or longer reset breaks without turning your workflow into a productivity dashboard.
 
-- Her 20 dakikada 20 saniyelik goz molasi.
-- Her 60 dakikada 5 dakikalik buyuk mola.
-- Once macOS bildirimi, 1 dakika sonra aksiyon yoksa ekran ustu panel.
+## Why
 
-## Research basis
+Long, uninterrupted screen sessions can contribute to eye strain symptoms such as dryness, burning, blurred vision, headaches, and neck or shoulder tension. FocusBreak does not make medical claims; it helps you build a practical break habit based on common eye-care and micro-break guidance.
 
-- American Optometric Association: 20-20-20 yaklasimi.
-- Mayo Clinic: ekran yorgunlugu icin duzenli goz molalari, kirpma ve uzak odak.
-- CDC/NIOSH: bilgisayar basinda saatlik kisa molalarin rahatsizligi azaltabildigine dair is sagligi onerileri.
-- Micro-break meta-analysis: kisa molalarin yorgunlugu azaltma ve iyi olusu destekleme bulgulari.
+Research basis:
 
-FocusBreak tibbi tedavi araci degildir; saglikli ekran aliskanligi kurmaya yardimci olur.
+- [American Optometric Association](https://www.aoa.org/healthy-eyes/eye-and-vision-conditions/computer-vision-syndrome/) - computer vision syndrome and the 20-20-20 approach.
+- [Mayo Clinic](https://www.mayoclinic.org/diseases-conditions/eyestrain/diagnosis-treatment/drc-20372403) - regular eye breaks, blinking, and screen ergonomics for eye strain.
+- [CDC/NIOSH](https://www.cdc.gov/niosh/blogs/2020/working-from-home.html) - work-from-home ergonomics and short breaks.
+- [Micro-break meta-analysis](https://pmc.ncbi.nlm.nih.gov/articles/PMC9432722/) - evidence that short breaks can reduce fatigue and support well-being.
 
-## App image
+## Features
 
-The generated app image is stored at:
+- Menu bar eye icon with a compact timer menu.
+- Main macOS window with daily break counters, next-break timer, research explanation, and settings.
+- 20-20-20 eye break mode: every 20 minutes, look away for 20 seconds.
+- Long break mode: default 5-minute break after 60 minutes of focus.
+- Pomodoro mode: focus and short-break cycle as a separate rhythm.
+- Gentle or insistent reminder style.
+- Full-screen blur overlay for longer breaks.
+- Pause, resume, skip, and snooze controls.
+- Launch-at-login support.
+- Free unsigned sharing through `.app` or `.dmg`.
 
-```text
-Resources/AppIcon.png
-```
+## Install
 
-The package script copies it into `dist/FocusBreak.app/Contents/Resources/`, and the app sets it as the runtime Dock icon.
+Download `FocusBreak.dmg` from the release, open it, then drag `FocusBreak.app` into `Applications`.
 
-## Build and run
+Because the app is unsigned and not notarized, macOS may show an "unidentified developer" warning. Use right click > Open the first time if needed.
+
+## Build Locally
+
+Requirements:
+
+- macOS 13+
+- Xcode command line tools
+- Swift Package Manager
+
+Run tests:
 
 ```bash
-swift run FocusBreak
+swift test
 ```
 
-If SwiftPM cannot write to the default macOS cache folders in a restricted shell, use local package caches:
-
-```bash
-CLANG_MODULE_CACHE_PATH="$PWD/.build/module-cache" swift run \
-  --cache-path "$PWD/.build/cache" \
-  --config-path "$PWD/.build/config" \
-  --security-path "$PWD/.build/security" \
-  FocusBreak
-```
-
-## Create a shareable app
+Build the app bundle:
 
 ```bash
 ./scripts/package_app.sh
 ```
 
-The unsigned app will be created at:
+Create the installer DMG:
+
+```bash
+./scripts/package_dmg.sh
+```
+
+Artifacts are written to:
 
 ```text
 dist/FocusBreak.app
+dist/FocusBreak.dmg
+dist/FocusBreak-Installer.dmg
 ```
 
-Friends may need to use right click > Open because the app is not Developer ID signed or notarized.
+## Distribution
+
+The first version is designed for free sharing without an Apple Developer account.
+
+You can share:
+
+- `FocusBreak.dmg` - easiest for friends, includes drag-to-Applications install screen.
+- `FocusBreak.app.zip` - direct app bundle archive.
+- The source project - friends can build locally with SwiftPM.
+
+Professional external distribution would ideally use Developer ID signing and notarization, but that requires the Apple Developer Program.
+
+Useful Apple references:
+
+- [Developer ID](https://developer.apple.com/support/developer-id/)
+- [Distributing macOS apps](https://developer.apple.com/macos/distribution/)
+
+## GitHub Description
+
+Free macOS menu-bar break reminder for developers and office workers, with 20-20-20 eye breaks, long breaks, Pomodoro mode, and shareable DMG builds.
+
+## License
+
+No license file has been added yet. Add one before broader public distribution.
