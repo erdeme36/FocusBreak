@@ -1,4 +1,16 @@
-# FocusBreak
+<p align="center">
+  <img src="Resources/AppIcon.png" alt="FocusBreak app icon" width="112" height="112">
+</p>
+
+<h1 align="center">FocusBreak</h1>
+
+<p align="center">
+  A free macOS menu-bar break reminder for developers and office workers.
+</p>
+
+<p align="center">
+  <a href="https://github.com/erdeme36/FocusBreak/releases/latest">Download latest release</a>
+</p>
 
 FocusBreak is a free macOS break reminder for developers and office workers who spend long stretches in front of a screen.
 
@@ -27,6 +39,7 @@ Research basis:
 - Pause, resume, skip, and snooze controls.
 - Launch-at-login support.
 - Free unsigned sharing through `.app` or `.dmg`.
+- Local-first behavior with no analytics or account requirement.
 
 ## Install
 
@@ -84,6 +97,21 @@ Useful Apple references:
 
 - [Developer ID](https://developer.apple.com/support/developer-id/)
 - [Distributing macOS apps](https://developer.apple.com/macos/distribution/)
+
+## Privacy
+
+FocusBreak is local-first. It does not require an account, does not include analytics, and does not send your break settings or usage data to a server.
+
+See [PRIVACY.md](PRIVACY.md) for the short privacy note.
+
+## Product Notes
+
+Good next steps before selling or wider public distribution:
+
+- Add Developer ID signing and notarization so macOS opens the app with fewer security warnings.
+- Add a license or commercial terms before broad public release.
+- Add a small website or landing page with the research basis, screenshots, and direct release download.
+- Consider a paid Pro version only after the free version feels reliable for daily use.
 
 ## GitHub Description
 

@@ -7,6 +7,7 @@ Free macOS menu-bar break reminder for developers and office workers.
 - `FocusBreak.dmg` - recommended installer with drag-to-Applications layout.
 - `FocusBreak-Installer.dmg` - same installer image with explicit installer filename.
 - `FocusBreak.app.zip` - zipped unsigned app bundle for direct sharing.
+- `AppIcon.png` - app icon for press, listings, or sharing.
 
 ## Highlights
 
@@ -19,6 +20,7 @@ Free macOS menu-bar break reminder for developers and office workers.
 - Full-screen long-break overlay.
 - Pause, resume, skip, and snooze controls.
 - Launch-at-login setting.
+- Local-first app with no analytics or account requirement.
 
 ## Install
 
