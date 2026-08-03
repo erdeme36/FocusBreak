@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:FocusBreak}",
+            "name": "Debug FocusBreak",
+            "target": "FocusBreak",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug FocusBreak"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:FocusBreak}",
+            "name": "Release FocusBreak",
+            "target": "FocusBreak",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release FocusBreak"
+        }
+    ]
+}
