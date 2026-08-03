@@ -119,4 +119,4 @@ Free macOS menu-bar break reminder for developers and office workers, with 20-20
 
 ## License
 
-No license file has been added yet. Add one before broader public distribution.
+FocusBreak is released under the [MIT License](LICENSE).
