@@ -599,23 +599,21 @@ struct OverlayRequest: Equatable, Identifiable {
 }
 
 @MainActor
-final class StatusBarController {
+final class StatusBarController: NSObject, NSMenuDelegate {
     private let item: NSStatusItem
     private let model: AppModel
-    private let popover = NSPopover()
+    private let menu = NSMenu()
     private var cancellables: Set<AnyCancellable> = []
 
     init(model: AppModel) {
         self.model = model
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        super.init()
         item.button?.image = NSImage(systemSymbolName: "eye", accessibilityDescription: "FocusBreak")
         item.button?.imagePosition = .imageOnly
         item.button?.title = ""
-        item.button?.target = self
-        item.button?.action = #selector(togglePopover)
-        popover.behavior = .transient
-        popover.contentSize = NSSize(width: 300, height: 330)
-        popover.contentViewController = NSHostingController(rootView: StatusPopoverView(model: model))
+        menu.delegate = self
+        item.menu = menu
         updateStatusItem()
 
         model.objectWillChange
@@ -633,22 +631,67 @@ final class StatusBarController {
         item.button?.toolTip = model.isRunning ? model.nextBreakLabel : "FocusBreak"
     }
 
-    @objc private func togglePopover() {
-        guard let button = item.button else { return }
+    func menuWillOpen(_ menu: NSMenu) {
+        rebuildMenu()
+    }
 
-        if popover.isShown {
-            popover.performClose(nil)
-        } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+    private func rebuildMenu() {
+        menu.removeAllItems()
+
+        let headerItem = NSMenuItem()
+        let headerView = NSHostingView(rootView: StatusMenuHeaderView(model: model))
+        headerView.frame = NSRect(x: 0, y: 0, width: 300, height: 248)
+        headerItem.view = headerView
+        menu.addItem(headerItem)
+        menu.addItem(.separator())
+
+        addMenuItem("Baslat", action: #selector(startSession), enabled: !model.isRunning)
+
+        if model.isRunning {
+            addMenuItem("Durdur", action: #selector(toggleRunning), enabled: true)
+        } else if model.canResumeSession {
+            addMenuItem("Devam ettir", action: #selector(toggleRunning), enabled: true)
         }
+
+        addMenuItem("Molayi atla", action: #selector(skipBreak), enabled: model.isRunning)
+        menu.addItem(.separator())
+        addMenuItem("Pencereyi ac", action: #selector(openSettings), enabled: true)
+        addMenuItem("Cikis", action: #selector(quit), enabled: true)
+    }
+
+    private func addMenuItem(_ title: String, action: Selector, enabled: Bool) {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+        item.target = self
+        item.isEnabled = enabled
+        menu.addItem(item)
+    }
+
+    @objc private func startSession() {
+        model.beginFocusSession()
+    }
+
+    @objc private func toggleRunning() {
+        model.toggleRunning()
+    }
+
+    @objc private func skipBreak() {
+        model.skipUpcomingBreak()
+    }
+
+    @objc private func openSettings() {
+        model.openSettings()
+    }
+
+    @objc private func quit() {
+        NSApp.terminate(nil)
     }
 }
 
-struct StatusPopoverView: View {
+struct StatusMenuHeaderView: View {
     @ObservedObject var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
                 Image(systemName: "eye")
                     .font(.system(size: 22, weight: .semibold))
@@ -672,47 +715,14 @@ struct StatusPopoverView: View {
             Text(model.nextBreakLabel)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
                 .frame(maxWidth: .infinity, alignment: .center)
-
-            Divider()
-
-            HStack(spacing: 8) {
-                Button {
-                    model.beginFocusSession()
-                } label: {
-                    Label("Başlat", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-
-                Button {
-                    model.toggleRunning()
-                } label: {
-                    Label(model.isRunning ? "Durdur" : "Devam ettir", systemImage: model.isRunning ? "pause.fill" : "play.fill")
-                }
-                .disabled(!model.isRunning && !model.canResumeSession)
-
-                Button {
-                    model.skipUpcomingBreak()
-                } label: {
-                    Image(systemName: "forward.fill")
-                }
-                .disabled(!model.isRunning)
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
-
-            HStack {
-                Button("Pencereyi aç") {
-                    model.openSettings()
-                }
-                Spacer()
-                Button("Çıkış") {
-                    NSApp.terminate(nil)
-                }
-            }
-            .font(.caption)
         }
-        .padding(16)
-        .frame(width: 300)
+        .padding(.top, 14)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 12)
+        .frame(width: 300, height: 248, alignment: .top)
     }
 }
 
@@ -772,7 +782,7 @@ final class OverlayController {
 
     private func showCenterPanel() {
         bannerPanel?.orderOut(nil)
-        let screenFrame = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 900, height: 700)
+        let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 900, height: 700)
 
         if centerPanel == nil {
             let panel = NSPanel(
@@ -782,7 +792,7 @@ final class OverlayController {
                 defer: false
             )
             panel.title = "FocusBreak"
-            panel.level = .screenSaver
+            panel.level = .modalPanel
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
             panel.isOpaque = false
             panel.backgroundColor = .clear
@@ -1128,13 +1138,15 @@ struct DashboardView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(model.isRunning)
 
-                Button {
-                    model.toggleRunning()
-                } label: {
-                    Label(model.isRunning ? "Durdur" : "Devam ettir", systemImage: model.isRunning ? "pause.fill" : "play.fill")
-                        .frame(width: 132)
+                if model.isRunning || model.canResumeSession {
+                    Button {
+                        model.toggleRunning()
+                    } label: {
+                        Label(model.isRunning ? "Durdur" : "Devam ettir", systemImage: model.isRunning ? "pause.fill" : "play.fill")
+                            .frame(width: 132)
+                    }
+                    .disabled(!model.isRunning && !model.canResumeSession)
                 }
-                .disabled(!model.isRunning && !model.canResumeSession)
 
                 Button {
                     model.skipUpcomingBreak()
