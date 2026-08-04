@@ -2,6 +2,26 @@ import XCTest
 @testable import FocusBreakCore
 
 final class BreakSchedulerTests: XCTestCase {
+    func testDefaultSettingsUseResearchBackedBreakRhythm() {
+        let settings = FocusBreakSettings.defaults
+
+        XCTAssertEqual(settings.eyeBreakIntervalMinutes, 20)
+        XCTAssertEqual(settings.eyeBreakSeconds, 20)
+        XCTAssertEqual(settings.focusMinutes, 60)
+        XCTAssertEqual(settings.longBreakMinutes, 5)
+    }
+
+    func testLegacyFastTestProfileResetsToDefaults() {
+        let settings = FocusBreakSettings(
+            focusMinutes: 2,
+            longBreakMinutes: 1,
+            eyeBreakIntervalMinutes: 2,
+            eyeBreakSeconds: 1
+        )
+
+        XCTAssertEqual(settings.normalizedForStorage, .defaults)
+    }
+
     func testEyeBreakBecomesDueBeforeLongBreak() {
         let start = Date(timeIntervalSince1970: 100)
         let settings = FocusBreakSettings(

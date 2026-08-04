@@ -115,11 +115,15 @@ final class AppModel: ObservableObject {
     private let countersKey = "focusbreak.counters"
 
     init() {
-        let loadedSettings = Self.load(FocusBreakSettings.self, key: settingsKey) ?? .defaults
+        let storedSettings = Self.load(FocusBreakSettings.self, key: settingsKey)
+        let loadedSettings = (storedSettings ?? .defaults).normalizedForStorage
         let loadedCounters = Self.load(BreakCounters.self, key: countersKey) ?? BreakCounters()
         settings = loadedSettings
         counters = loadedCounters
         scheduler = BreakScheduler(settings: loadedSettings)
+        if storedSettings != loadedSettings {
+            Self.save(loadedSettings, key: settingsKey)
+        }
         resetCountersIfNeeded()
     }
 
@@ -553,6 +557,7 @@ final class AppModel: ObservableObject {
     }
 
     private func saveSettings() {
+        settings = settings.normalizedForStorage
         Self.save(settings, key: settingsKey)
     }
 

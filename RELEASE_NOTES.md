@@ -1,11 +1,13 @@
-# FocusBreak v1.0.1
+# FocusBreak v1.0.2
 
 Free macOS menu-bar break reminder for developers and office workers.
 
 ## Fix
 
-- Rebuilt release assets with explicit ad-hoc app bundle signing to avoid broken bundle signatures that could trigger macOS "damaged" errors.
-- Added Gatekeeper troubleshooting notes for unsigned, non-notarized downloads.
+- Restored the intended default FocusBreak rhythm: 20-minute eye break interval, 20-second eye break, 60-minute focus interval, and 5-minute long break.
+- Added a settings migration that resets the old fast test profile (`2/1/2/1`) back to production defaults.
+- Normalized saved settings so out-of-range values cannot remain stuck after older test builds.
+- Rebuilt release assets with ad-hoc app bundle signing.
 
 ## What's Included
 

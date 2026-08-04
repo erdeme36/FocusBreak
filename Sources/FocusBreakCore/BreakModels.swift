@@ -121,6 +121,32 @@ public struct FocusBreakSettings: Codable, Equatable, Sendable {
 
     public static let defaults = FocusBreakSettings()
 
+    public var normalizedForStorage: FocusBreakSettings {
+        if isLegacyFastTestProfile {
+            return Self.defaults
+        }
+
+        var normalized = self
+        normalized.focusMinutes = Self.clamp(focusMinutes, to: 1...240)
+        normalized.longBreakMinutes = Self.clamp(longBreakMinutes, to: 1...60)
+        normalized.eyeBreakIntervalMinutes = Self.clamp(eyeBreakIntervalMinutes, to: 1...120)
+        normalized.eyeBreakSeconds = Self.clamp(eyeBreakSeconds, to: 5...300)
+        normalized.pomodoroFocusMinutes = Self.clamp(pomodoroFocusMinutes, to: 5...90)
+        normalized.pomodoroBreakMinutes = Self.clamp(pomodoroBreakMinutes, to: 1...30)
+        return normalized
+    }
+
+    private var isLegacyFastTestProfile: Bool {
+        focusMinutes == 2 &&
+            longBreakMinutes == 1 &&
+            eyeBreakIntervalMinutes == 2 &&
+            (eyeBreakSeconds == 1 || eyeBreakSeconds == 60)
+    }
+
+    private static func clamp(_ value: Int, to range: ClosedRange<Int>) -> Int {
+        min(max(value, range.lowerBound), range.upperBound)
+    }
+
     private enum CodingKeys: String, CodingKey {
         case focusMinutes
         case longBreakMinutes
