@@ -47,6 +47,14 @@ Download `FocusBreak.dmg` from the release, open it, then drag `FocusBreak.app` 
 
 Because the app is unsigned and not notarized, macOS may show an "unidentified developer" warning. Use right click > Open the first time if needed.
 
+If macOS says the app is "damaged" after downloading, it is usually Gatekeeper quarantine on an unsigned build. Move the app to `Applications`, then run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/FocusBreak.app
+```
+
+After that, open it with right click > Open. A Developer ID signed and notarized build would avoid this extra step, but it requires an Apple Developer Program account.
+
 ## Build Locally
 
 Requirements:

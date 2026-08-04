@@ -1,6 +1,11 @@
-# FocusBreak v1.0.0
+# FocusBreak v1.0.1
 
 Free macOS menu-bar break reminder for developers and office workers.
+
+## Fix
+
+- Rebuilt release assets with explicit ad-hoc app bundle signing to avoid broken bundle signatures that could trigger macOS "damaged" errors.
+- Added Gatekeeper troubleshooting notes for unsigned, non-notarized downloads.
 
 ## What's Included
 
@@ -26,7 +31,15 @@ Free macOS menu-bar break reminder for developers and office workers.
 
 Open `FocusBreak.dmg`, then drag `FocusBreak.app` into `Applications`.
 
-This build is unsigned and not notarized. macOS may require right click > Open on first launch.
+This build is ad-hoc signed but not Developer ID signed or notarized. macOS may require right click > Open on first launch.
+
+If macOS says the app is "damaged", run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/FocusBreak.app
+```
+
+Then open it with right click > Open.
 
 ## Notes
 

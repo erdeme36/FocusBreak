@@ -50,9 +50,6 @@ ln -s /Applications "$MOUNT_POINT/Applications"
 xattr -cr "$MOUNT_POINT/$APP_NAME.app" || true
 chflags -R nohidden "$MOUNT_POINT/$APP_NAME.app" || true
 chflags nohidden "$MOUNT_POINT/Applications" || true
-if command -v SetFile >/dev/null 2>&1; then
-  SetFile -a v "$MOUNT_POINT/$APP_NAME.app" || true
-fi
 
 sync
 
