@@ -1,13 +1,12 @@
-# FocusBreak v1.0.4
+# FocusBreak v1.0.5
 
 Free macOS menu-bar break reminder for developers and office workers.
 
 ## Fix
 
-- Added sounds at break start and break completion.
-- Made long breaks win when a 20-20-20 eye break and 60-minute long break land at the same time.
-- Changed the focus countdown to track active work time: when the Mac is idle, FocusBreak preserves the remaining focus time instead of silently counting down in the background.
-- Hardened app bundle metadata cleanup before signing release builds.
+- Fixed active-work detection so mouse and keyboard use correctly resumes the countdown after "Aktivite bekleniyor".
+- Switched idle detection to the HID system event source, which tracks real local input reliably.
+- Countdown now pauses only after 60 seconds of real input idle time, while frontmost meeting apps like Zoom, Teams, FaceTime, Webex, Discord, and Slack still count as active work.
 - Rebuilt release assets with ad-hoc app bundle signing.
 
 ## What's Included

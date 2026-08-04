@@ -111,7 +111,7 @@ final class AppModel: ObservableObject {
     private var pausedEyeBreakRemaining: TimeInterval?
     private var pausedLongBreakRemaining: TimeInterval?
     private var lastWorkTickAt = Date()
-    private let activeIdleThreshold: TimeInterval = 90
+    private let activeIdleThreshold: TimeInterval = 60
     private let defaults = UserDefaults.standard
     private let settingsKey = "focusbreak.settings"
     private let countersKey = "focusbreak.counters"
@@ -483,10 +483,32 @@ final class AppModel: ObservableObject {
 
     private var userIsIdle: Bool {
         let idleSeconds = CGEventSource.secondsSinceLastEventType(
-            .combinedSessionState,
+            .hidSystemState,
             eventType: .null
         )
-        return idleSeconds >= activeIdleThreshold
+        return idleSeconds >= activeIdleThreshold && !frontmostAppCountsAsWork
+    }
+
+    private var frontmostAppCountsAsWork: Bool {
+        guard let app = NSWorkspace.shared.frontmostApplication else {
+            return false
+        }
+
+        let bundleID = app.bundleIdentifier?.lowercased() ?? ""
+        let appName = app.localizedName?.lowercased() ?? ""
+        let workSignals = [
+            "zoom",
+            "teams",
+            "facetime",
+            "webex",
+            "skype",
+            "discord",
+            "slack"
+        ]
+
+        return workSignals.contains { signal in
+            bundleID.contains(signal) || appName.contains(signal)
+        }
     }
 
     private func announceBreak(_ kind: BreakKind) {
