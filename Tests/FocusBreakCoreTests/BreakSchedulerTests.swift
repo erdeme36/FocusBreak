@@ -44,6 +44,37 @@ final class BreakSchedulerTests: XCTestCase {
         XCTAssertEqual(scheduler.dueBreak(at: start.addingTimeInterval(60 * 60)), .long)
     }
 
+    func testNextBreakKindChoosesLongBreakWhenDeadlinesTie() {
+        let start = Date(timeIntervalSince1970: 100)
+        let settings = FocusBreakSettings(
+            focusMinutes: 60,
+            longBreakMinutes: 5,
+            eyeBreakIntervalMinutes: 20,
+            eyeBreakSeconds: 20
+        )
+        var scheduler = BreakScheduler(settings: settings, now: start)
+        scheduler.nextEyeBreakAt = start.addingTimeInterval(60 * 60)
+        scheduler.nextLongBreakAt = start.addingTimeInterval(60 * 60)
+
+        XCTAssertEqual(scheduler.nextBreakKind(), .long)
+    }
+
+    func testPostponingActiveDeadlinesPreservesRemainingWorkTime() {
+        let start = Date(timeIntervalSince1970: 100)
+        var scheduler = BreakScheduler(now: start)
+
+        scheduler.postponeActiveDeadlines(by: 45)
+
+        XCTAssertEqual(
+            Int(scheduler.nextEyeBreakAt.timeIntervalSince(start)),
+            (20 * 60) + 45
+        )
+        XCTAssertEqual(
+            Int(scheduler.nextLongBreakAt.timeIntervalSince(start)),
+            (60 * 60) + 45
+        )
+    }
+
     func testCompletingLongBreakResetsBothSchedules() {
         let start = Date(timeIntervalSince1970: 100)
         var scheduler = BreakScheduler(now: start)

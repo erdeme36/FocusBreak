@@ -79,6 +79,7 @@ chmod +x "$MACOS_DIR/$APP_NAME"
 
 if command -v codesign >/dev/null 2>&1; then
   xattr -cr "$APP_DIR" || true
+  find "$APP_DIR" -exec xattr -c {} \; 2>/dev/null || true
   xattr -d com.apple.FinderInfo "$APP_DIR" 2>/dev/null || true
   xattr -d "com.apple.fileprovider.fpfs#P" "$APP_DIR" 2>/dev/null || true
   find "$APP_DIR" -name "._*" -delete

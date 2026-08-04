@@ -110,6 +110,8 @@ final class AppModel: ObservableObject {
     private var pendingBreak: BreakKind?
     private var pausedEyeBreakRemaining: TimeInterval?
     private var pausedLongBreakRemaining: TimeInterval?
+    private var lastWorkTickAt = Date()
+    private let activeIdleThreshold: TimeInterval = 90
     private let defaults = UserDefaults.standard
     private let settingsKey = "focusbreak.settings"
     private let countersKey = "focusbreak.counters"
@@ -214,7 +216,7 @@ final class AppModel: ObservableObject {
         }
 
         if settings.eyeBreaksEnabled, settings.longBreaksEnabled {
-            return scheduler.nextEyeBreakAt <= scheduler.nextLongBreakAt ? "goz molasi" : "buyuk mola"
+            return scheduler.nextBreakKind() == .eye ? "goz molasi" : "buyuk mola"
         }
 
         if settings.eyeBreaksEnabled {
@@ -250,6 +252,7 @@ final class AppModel: ObservableObject {
         overlayRequest = nil
         pausedEyeBreakRemaining = nil
         pausedLongBreakRemaining = nil
+        lastWorkTickAt = Date()
         scheduler = BreakScheduler(settings: settings)
         scheduler.isPaused = false
         isRunning = true
@@ -275,6 +278,7 @@ final class AppModel: ObservableObject {
             }
             isRunning = true
             scheduler.isPaused = false
+            lastWorkTickAt = now
             pausedEyeBreakRemaining = nil
             pausedLongBreakRemaining = nil
             lastEventText = "Sayac devam ediyor"
@@ -346,6 +350,7 @@ final class AppModel: ObservableObject {
         pausedLongBreakRemaining = nil
         scheduler = BreakScheduler(settings: newSettings)
         scheduler.isPaused = !isRunning
+        lastWorkTickAt = Date()
         saveSettings()
         lastEventText = isRunning ? "Ayarlar guncellendi; sayac yeniden basladi" : "Ayarlar guncellendi"
     }
@@ -433,6 +438,7 @@ final class AppModel: ObservableObject {
     }
 
     private func tick() {
+        let now = Date()
         resetCountersIfNeeded()
 
         if var request = overlayRequest, let endsAt = request.endsAt {
@@ -445,6 +451,8 @@ final class AppModel: ObservableObject {
             return
         }
 
+        applyWorkingTimeGate(at: now)
+
         guard isRunning, overlayRequest == nil, pendingBreak == nil, let due = scheduler.dueBreak() else {
             objectWillChange.send()
             return
@@ -453,11 +461,40 @@ final class AppModel: ObservableObject {
         announceBreak(due)
     }
 
+    private func applyWorkingTimeGate(at now: Date) {
+        guard isRunning, overlayRequest == nil, pendingBreak == nil else {
+            lastWorkTickAt = now
+            return
+        }
+
+        let elapsed = max(0, now.timeIntervalSince(lastWorkTickAt))
+        lastWorkTickAt = now
+
+        guard elapsed > 0, userIsIdle else {
+            if lastEventText == "Aktivite bekleniyor" {
+                lastEventText = "Sayac calisiyor"
+            }
+            return
+        }
+
+        scheduler.postponeActiveDeadlines(by: elapsed)
+        lastEventText = "Aktivite bekleniyor"
+    }
+
+    private var userIsIdle: Bool {
+        let idleSeconds = CGEventSource.secondsSinceLastEventType(
+            .combinedSessionState,
+            eventType: .null
+        )
+        return idleSeconds >= activeIdleThreshold
+    }
+
     private func announceBreak(_ kind: BreakKind) {
         var request = OverlayRequest(kind: kind)
         overlayRequest = nil
         pendingBreak = kind
         sendNotification(for: kind)
+        BreakSound.playStart()
         lastEventText = "\(kind.displayTitle) zamani"
 
         if kind == .eye {
@@ -496,6 +533,7 @@ final class AppModel: ObservableObject {
         pendingBreak = nil
         overlayRequest = nil
         overlayTask?.cancel()
+        BreakSound.playEnd()
         lastEventText = "\(kind.displayTitle) tamamlandi"
         saveCounters()
     }
@@ -526,19 +564,7 @@ final class AppModel: ObservableObject {
     }
 
     private func nextBreakKind() -> BreakKind {
-        if settings.sessionMode == .pomodoro {
-            return .pomodoro
-        }
-
-        if settings.eyeBreaksEnabled, settings.longBreaksEnabled {
-            return scheduler.nextEyeBreakAt <= scheduler.nextLongBreakAt ? .eye : .long
-        }
-
-        if settings.eyeBreaksEnabled {
-            return .eye
-        }
-
-        return .long
+        scheduler.nextBreakKind()
     }
 
     private func durationSeconds(for kind: BreakKind) -> TimeInterval {
@@ -604,6 +630,24 @@ struct OverlayRequest: Equatable, Identifiable {
     var startedAt: Date?
     var endsAt: Date?
     var remainingSeconds = 0
+}
+
+enum BreakSound {
+    static func playStart() {
+        play(named: "Glass")
+    }
+
+    static func playEnd() {
+        play(named: "Hero")
+    }
+
+    private static func play(named name: NSSound.Name) {
+        if let sound = NSSound(named: name) {
+            sound.play()
+        } else {
+            NSSound.beep()
+        }
+    }
 }
 
 @MainActor

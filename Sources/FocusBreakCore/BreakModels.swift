@@ -277,6 +277,39 @@ public struct BreakScheduler: Equatable, Sendable {
         return nextLongBreakAt
     }
 
+    public func nextBreakKind() -> BreakKind {
+        if settings.sessionMode == .pomodoro {
+            return .pomodoro
+        }
+
+        if settings.eyeBreaksEnabled, settings.longBreaksEnabled {
+            return nextEyeBreakAt < nextLongBreakAt ? .eye : .long
+        }
+
+        if settings.eyeBreaksEnabled {
+            return .eye
+        }
+
+        return .long
+    }
+
+    public mutating func postponeActiveDeadlines(by interval: TimeInterval) {
+        guard interval > 0 else { return }
+
+        if settings.sessionMode == .pomodoro {
+            nextLongBreakAt = nextLongBreakAt.addingTimeInterval(interval)
+            return
+        }
+
+        if settings.eyeBreaksEnabled {
+            nextEyeBreakAt = nextEyeBreakAt.addingTimeInterval(interval)
+        }
+
+        if settings.longBreaksEnabled {
+            nextLongBreakAt = nextLongBreakAt.addingTimeInterval(interval)
+        }
+    }
+
     public mutating func complete(_ kind: BreakKind, at now: Date = Date()) {
         switch kind {
         case .eye:

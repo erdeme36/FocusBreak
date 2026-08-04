@@ -1,11 +1,13 @@
-# FocusBreak v1.0.3
+# FocusBreak v1.0.4
 
 Free macOS menu-bar break reminder for developers and office workers.
 
 ## Fix
 
-- Fixed the menu-bar eye icon popup countdown so it keeps updating while the macOS menu is open.
-- Moved the app timer onto the common run-loop mode so menu tracking no longer freezes the displayed timer.
+- Added sounds at break start and break completion.
+- Made long breaks win when a 20-20-20 eye break and 60-minute long break land at the same time.
+- Changed the focus countdown to track active work time: when the Mac is idle, FocusBreak preserves the remaining focus time instead of silently counting down in the background.
+- Hardened app bundle metadata cleanup before signing release builds.
 - Rebuilt release assets with ad-hoc app bundle signing.
 
 ## What's Included
