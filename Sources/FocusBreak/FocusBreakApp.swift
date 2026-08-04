@@ -226,11 +226,14 @@ final class AppModel: ObservableObject {
 
     func start() {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        let newTimer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.tick()
             }
         }
+        newTimer.tolerance = 0.15
+        RunLoop.main.add(newTimer, forMode: .common)
+        timer = newTimer
         tick()
     }
 
