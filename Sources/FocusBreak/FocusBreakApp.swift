@@ -46,6 +46,7 @@ final class FocusBreakApp: NSObject, NSApplicationDelegate {
         model.requestNotificationPermission()
         model.refreshLoginItemStatus()
         model.start()
+        model.checkForUpdates(silent: true)
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
@@ -101,6 +102,7 @@ final class AppModel: ObservableObject {
     @Published var overlayRequest: OverlayRequest?
     @Published var notificationStatusText = "Bildirim izni kontrol ediliyor"
     @Published var loginStatusText = "Acilista baslatma kontrol ediliyor"
+    @Published var updateStatusText = "Guncelleme kontrol edilmedi"
     @Published var isRunning = false
     @Published var lastEventText = "Baslatmaya hazir"
     @Published var hasStartedSession = false
@@ -112,12 +114,14 @@ final class AppModel: ObservableObject {
     private var pausedLongBreakRemaining: TimeInterval?
     private var lastWorkTickAt = Date()
     private let activeIdleThreshold: TimeInterval = 60
+    private var isCheckingForUpdates = false
     private let defaults = UserDefaults.standard
     private let settingsKey = "focusbreak.settings"
     private let countersKey = "focusbreak.counters"
 
     init() {
         let storedSettings = Self.load(FocusBreakSettings.self, key: settingsKey)
+        Self.migrateIntroPreference(hasStoredSettings: storedSettings != nil)
         let loadedSettings = (storedSettings ?? .defaults).normalizedForStorage
         let loadedCounters = Self.load(BreakCounters.self, key: countersKey) ?? BreakCounters()
         settings = loadedSettings
@@ -437,6 +441,74 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func checkForUpdates(silent: Bool = false) {
+        guard !isCheckingForUpdates else { return }
+        isCheckingForUpdates = true
+        updateStatusText = "Guncelleme kontrol ediliyor"
+
+        Task {
+            do {
+                let release = try await UpdateService.latestRelease()
+                isCheckingForUpdates = false
+
+                if release.version > AppVersion.current {
+                    updateStatusText = "\(release.tagName) hazir"
+                    showUpdatePrompt(for: release)
+                } else {
+                    updateStatusText = "Guncel: \(AppVersion.current.displayString)"
+                }
+            } catch {
+                isCheckingForUpdates = false
+                updateStatusText = "Guncelleme kontrol edilemedi"
+
+                if !silent {
+                    let alert = NSAlert()
+                    alert.messageText = "Guncelleme kontrol edilemedi"
+                    alert.informativeText = error.localizedDescription
+                    alert.addButton(withTitle: "Tamam")
+                    alert.runModal()
+                }
+            }
+        }
+    }
+
+    private func showUpdatePrompt(for release: UpdateRelease) {
+        let alert = NSAlert()
+        alert.messageText = "Yeni FocusBreak surumu var"
+        alert.informativeText = "Kurulu surum \(AppVersion.current.displayString), son surum \(release.tagName). DMG indirilsin ve acilsin mi?"
+        alert.addButton(withTitle: "Indir ve ac")
+        alert.addButton(withTitle: "Release sayfasi")
+        alert.addButton(withTitle: "Sonra")
+
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            downloadAndOpenUpdate(release)
+        case .alertSecondButtonReturn:
+            NSWorkspace.shared.open(release.htmlURL)
+        default:
+            break
+        }
+    }
+
+    private func downloadAndOpenUpdate(_ release: UpdateRelease) {
+        guard release.dmgURL != nil else {
+            NSWorkspace.shared.open(release.htmlURL)
+            return
+        }
+
+        updateStatusText = "\(release.tagName) indiriliyor"
+        Task {
+            do {
+                let fileURL = try await UpdateService.downloadDMG(for: release)
+                updateStatusText = "DMG indirildi"
+                NSWorkspace.shared.open(fileURL)
+            } catch {
+                updateStatusText = "Indirme basarisiz"
+                NSWorkspace.shared.open(release.htmlURL)
+            }
+        }
+    }
+
     private func tick() {
         let now = Date()
         resetCountersIfNeeded()
@@ -626,6 +698,12 @@ final class AppModel: ObservableObject {
         UserDefaults.standard.set(data, forKey: key)
     }
 
+    private static func migrateIntroPreference(hasStoredSettings: Bool) {
+        let introKey = "focusbreak.showingIntro"
+        guard UserDefaults.standard.object(forKey: introKey) == nil, hasStoredSettings else { return }
+        UserDefaults.standard.set(false, forKey: introKey)
+    }
+
     private var pausedNextBreakRemaining: TimeInterval? {
         switch settings.sessionMode {
         case .pomodoro:
@@ -652,6 +730,124 @@ struct OverlayRequest: Equatable, Identifiable {
     var startedAt: Date?
     var endsAt: Date?
     var remainingSeconds = 0
+}
+
+struct AppVersion: Comparable {
+    static let current = AppVersion(
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+    )
+
+    let components: [Int]
+    let displayString: String
+
+    init(_ rawValue: String) {
+        let cleaned = rawValue
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
+        let parsed = cleaned
+            .split(separator: ".")
+            .map { part in
+                Int(part.prefix { $0.isNumber }) ?? 0
+            }
+
+        components = parsed.isEmpty ? [0] : parsed
+        displayString = cleaned.isEmpty ? "0" : cleaned
+    }
+
+    static func < (lhs: AppVersion, rhs: AppVersion) -> Bool {
+        let count = max(lhs.components.count, rhs.components.count)
+        for index in 0..<count {
+            let left = index < lhs.components.count ? lhs.components[index] : 0
+            let right = index < rhs.components.count ? rhs.components[index] : 0
+
+            if left != right {
+                return left < right
+            }
+        }
+
+        return false
+    }
+}
+
+struct UpdateRelease {
+    let tagName: String
+    let version: AppVersion
+    let htmlURL: URL
+    let dmgURL: URL?
+}
+
+enum UpdateService {
+    private static let latestReleaseURL = URL(string: "https://api.github.com/repos/erdeme36/FocusBreak/releases/latest")!
+
+    static func latestRelease() async throws -> UpdateRelease {
+        var request = URLRequest(url: latestReleaseURL)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+
+        let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
+        let dmgURL = release.assets
+            .first(where: { $0.name == "FocusBreak.dmg" })?
+            .browserDownloadURL ?? release.assets
+            .first(where: { $0.name.lowercased().hasSuffix(".dmg") })?
+            .browserDownloadURL
+
+        return UpdateRelease(
+            tagName: release.tagName,
+            version: AppVersion(release.tagName),
+            htmlURL: release.htmlURL,
+            dmgURL: dmgURL
+        )
+    }
+
+    static func downloadDMG(for release: UpdateRelease) async throws -> URL {
+        guard let dmgURL = release.dmgURL else {
+            throw URLError(.badURL)
+        }
+
+        let (temporaryURL, response) = try await URLSession.shared.download(from: dmgURL)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+
+        let downloadsURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
+        let destinationURL = downloadsURL.appendingPathComponent("FocusBreak-\(release.tagName).dmg")
+
+        if FileManager.default.fileExists(atPath: destinationURL.path) {
+            try FileManager.default.removeItem(at: destinationURL)
+        }
+
+        try FileManager.default.copyItem(at: temporaryURL, to: destinationURL)
+        return destinationURL
+    }
+
+    private struct GitHubRelease: Decodable {
+        let tagName: String
+        let htmlURL: URL
+        let assets: [GitHubAsset]
+
+        private enum CodingKeys: String, CodingKey {
+            case tagName = "tag_name"
+            case htmlURL = "html_url"
+            case assets
+        }
+    }
+
+    private struct GitHubAsset: Decodable {
+        let name: String
+        let browserDownloadURL: URL
+
+        private enum CodingKeys: String, CodingKey {
+            case name
+            case browserDownloadURL = "browser_download_url"
+        }
+    }
 }
 
 enum BreakSound {
@@ -729,6 +925,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
         addMenuItem("Molayi atla", action: #selector(skipBreak), enabled: model.isRunning)
         menu.addItem(.separator())
+        addMenuItem("Guncelleme kontrol et", action: #selector(checkForUpdates), enabled: true)
         addMenuItem("Pencereyi ac", action: #selector(openSettings), enabled: true)
         addMenuItem("Cikis", action: #selector(quit), enabled: true)
     }
@@ -754,6 +951,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func openSettings() {
         model.openSettings()
+    }
+
+    @objc private func checkForUpdates() {
+        model.checkForUpdates(silent: false)
     }
 
     @objc private func quit() {
@@ -1008,7 +1209,7 @@ enum AppIcon {
 
 struct DashboardView: View {
     @ObservedObject var model: AppModel
-    @State private var showingIntro = true
+    @AppStorage("focusbreak.showingIntro") private var showingIntro = true
     @State private var introStep = 0
 
     var body: some View {
@@ -1413,6 +1614,22 @@ struct DashboardView: View {
                     )
                     Spacer()
                 }
+
+                HStack(spacing: 12) {
+                    Label("Guncelleme", systemImage: "arrow.down.circle")
+                        .font(.headline)
+                    Text(model.updateStatusText)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        model.checkForUpdates(silent: false)
+                    } label: {
+                        Label("Kontrol et", systemImage: "arrow.clockwise")
+                    }
+                }
+                .padding(14)
+                .background(Color(nsColor: .windowBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 if !showingIntro {
                     HStack {

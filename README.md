@@ -38,6 +38,7 @@ Research basis:
 - Full-screen blur overlay for longer breaks.
 - Pause, resume, skip, and snooze controls.
 - Launch-at-login support.
+- Startup and manual update checks from the public GitHub release.
 - Free unsigned sharing through `.app` or `.dmg`.
 - Local-first behavior with no analytics or account requirement.
 
@@ -46,6 +47,8 @@ Research basis:
 Download `FocusBreak.dmg` from the release, open it, then drag `FocusBreak.app` into `Applications`.
 
 Because the app is unsigned and not notarized, macOS may show an "unidentified developer" warning. Use right click > Open the first time if needed.
+
+FocusBreak checks the public GitHub release on startup. If a newer version exists, it can download the latest DMG to your Downloads folder and open it so you can drag the new app into Applications.
 
 If macOS says the app is "damaged" after downloading, it is usually Gatekeeper quarantine on an unsigned build. Move the app to `Applications`, then run:
 
